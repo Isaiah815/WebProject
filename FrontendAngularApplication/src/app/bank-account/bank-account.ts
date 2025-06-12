@@ -74,11 +74,11 @@ ngOnInit(): void {
 }
 
 
-  removeBankAccountForm(index: number): void {
+  /*removeBankAccountForm(index: number): void {
     if (this.bankAccountForms.length > 1) {
       this.bankAccountForms.removeAt(index);
     }
-  }
+  }*/
   
   
   
