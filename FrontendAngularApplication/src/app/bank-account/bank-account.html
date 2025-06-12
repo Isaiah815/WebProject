@@ -1,0 +1,53 @@
+<form [formGroup]="form">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Account No</th>
+        <th>Account Holder</th>
+        <th>Bank ID</th>
+        <th>IFSC</th>
+        <button 
+  type="button" 
+  (click)="addBankAccountForm()" 
+  style="background-color: #007bff; color: white; border: none; padding: 8px 16px; cursor: pointer;"
+  (mouseenter)="null" 
+  (mouseleave)="null">
+  <i class="fas fa-plus"></i> New Account
+</button>
+
+      </tr>
+    </thead>
+    <tbody formArrayName="bankAccountForms">
+      <tr *ngFor="let grp of bankAccountForms.controls; let i = index" [formGroupName]="i">
+
+        <td><input formControlName="accountNumber"></td>
+
+        <td><input formControlName="accountHolder"></td>
+
+  <select formControlName="bankId">
+  <option [ngValue]="0" disabled>-- Select Bank --</option>
+  <option *ngFor="let bank of banks" [ngValue]="bank.bankId">
+    {{ bank.bankName }}
+  </option>
+</select>
+
+ <td><input formControlName="ifsc" placeholder="IFSC" /></td>
+
+
+<td>
+ <button type="button" (click)="onSubmit(i)"   style="background-color: green; color: white; border: none; padding: 6px 12px; cursor: pointer;">
+  <i class="fas fa-save"></i>Submit
+</button>
+
+</td>
+<td><button type="button" class="btn btn-danger btn-sm" (click)="onDelete(i, grp.value)">
+  <i class="fa-sharp-duotone fa-solid fa-trash"></i> Delete
+</button>
+</td>
+
+      </tr>
+    </tbody>
+  </table>
+
+  
+</form>
