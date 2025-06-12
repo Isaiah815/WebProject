@@ -72,13 +72,6 @@ ngOnInit(): void {
     ifsc: [data?.ifsc || '', Validators.required]
   }));
 }
-
-
-  /*removeBankAccountForm(index: number): void {
-    if (this.bankAccountForms.length > 1) {
-      this.bankAccountForms.removeAt(index);
-    }
-  }*/
   
   
   
