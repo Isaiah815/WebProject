@@ -10,5 +10,17 @@ namespace WebAPI.Models
 
         public DbSet<Bank> Banks { get; set; }
         public DbSet<BankAccount> BankAccounts { get; set; }
+
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<BankAccount>()
+                .HasIndex(b => new { b.AccountNumber, b.BankId })
+                .IsUnique();
+
+            base.OnModelCreating(modelBuilder);
+        }
+
     }
 }
+

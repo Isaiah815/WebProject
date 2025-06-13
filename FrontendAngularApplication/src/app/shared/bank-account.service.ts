@@ -37,4 +37,13 @@ export class BankAccountService {
   delete(id: number): Observable<any> {
     return this.http.delete(`${this.APIUrl}/${id}`);
   }
+
+  getByAccountDetails(account: BankAccount): Observable<BankAccount | null> {
+  return this.http.get<BankAccount | null>(
+    `${this.APIUrl}/check?accountNumber=${account.accountNumber}&bankId=${account.bankId}`
+  );
+}
+
+
+
 }

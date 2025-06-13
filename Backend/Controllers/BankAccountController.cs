@@ -26,23 +26,32 @@ namespace WebAPI.Controllers
         }
 
         // GET: api/BankAccount/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<BankAccount>> GetBankAccount(int id)
+        [HttpGet("check")]
+        public ActionResult<BankAccount> CheckIfExists(string accountNumber, int bankId)
         {
-            var account = await _context.BankAccounts
-                                        .Include(b => b.Bank)
-                                        .FirstOrDefaultAsync(a => a.BankAccountID == id);
+            var account = _context.BankAccounts
+                .FirstOrDefault(a => a.AccountNumber == accountNumber && a.BankId == bankId);
 
-            if (account == null) return NotFound();
-            return account;
+            if (account != null)
+                return Ok(account);
+
+            return NotFound();
         }
 
-        // POST: api/BankAccount
+
         [HttpPost]
         public async Task<ActionResult<BankAccount>> PostBankAccount(BankAccount account)
         {
             try
             {
+                var exists = await _context.BankAccounts
+                    .AnyAsync(a => a.AccountNumber == account.AccountNumber && a.BankId == account.BankId);
+
+                if (exists)
+                {
+                    return Conflict(new { message = "Account number already exists for this bank." });
+                }
+
                 _context.BankAccounts.Add(account);
                 await _context.SaveChangesAsync();
 
@@ -54,8 +63,9 @@ namespace WebAPI.Controllers
             }
         }
 
-            // PUT: api/BankAccount/5
-            [HttpPut("{id}")]
+
+        // PUT: api/BankAccount/5
+        [HttpPut("{id}")]
         public async Task<IActionResult> PutBankAccount(int id, BankAccount account)
         {
             if (id != account.BankAccountID) return BadRequest();

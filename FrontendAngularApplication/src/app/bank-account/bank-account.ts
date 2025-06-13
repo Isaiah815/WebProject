@@ -73,11 +73,16 @@ ngOnInit(): void {
   }));
 }
   
-  
-  
+
+ areAccountsEqual(a: BankAccount, b: BankAccount): boolean {
+    return a.accountNumber === b.accountNumber &&
+           a.accountHolder === b.accountHolder &&
+           a.bankId === b.bankId &&
+           a.ifsc === b.ifsc;
+  }
 onSubmit(i: number): void {
   const row = this.bankAccountForms.at(i);
-  
+
   if (!row) {
     console.error('No form row exists at index:', i);
     return;
@@ -90,25 +95,52 @@ onSubmit(i: number): void {
 
   const account: BankAccount = row.value;
 
-  if (account.bankAccountID === 0) {
-    this.bankAccountService.create(account).subscribe({
-      next: (res) => {
-        console.log('Saved:', res);
-        this.bankAccountForms.at(i)?.patchValue({ bankAccountID: res.bankAccountID });
-        alert('Record saved.');
-      },
-      error: (err) => console.error('Save error', err)
-    });
-  } else {
-    if (account.bankAccountID !== undefined) {
-      this.bankAccountService.update(account.bankAccountID, account).subscribe({
-        next: () => alert('Record updated.'),
-        error: err => console.error('Update failed', err)
-      });
-    } else {
-      console.error('Cannot update: bankAccountID is undefined');
+  this.bankAccountService.getByAccountDetails(account).subscribe({
+    next: (existingAccount) => {
+      
+      if (existingAccount && account.bankAccountID === 0) {
+        alert('AcccountNumber already exists.');
+        return;
+      }
+
+     
+      if (account.bankAccountID !== 0) {
+        if (existingAccount && this.areAccountsEqual(existingAccount, account)) {
+          alert(' Record already exists.');
+          return;
+        }
+
+        this.bankAccountService.update(account.bankAccountID!, account).subscribe({
+          next: () => {
+            alert('Record updated.');
+          },
+          error: (err) => {
+            console.error('Update error', err);
+            alert('Failed to update record: ' + (err.error?.message || 'Unknown error'));
+          }
+        });
+        return;
+      }
+    },
+    error: (err) => {
+      if (err.status === 404) {
+
+        this.bankAccountService.create(account).subscribe({
+          next: (res) => {
+            this.bankAccountForms.at(i)?.patchValue({ bankAccountID: res.bankAccountID });
+            alert('Record saved.');
+          },
+          error: (err) => {
+            console.error('Save error', err);
+            alert('Failed to save record: ' + (err.error?.message || 'Unknown error'));
+          }
+        });
+      } else {
+        console.error('Existence check failed', err);
+        alert('Failed to check if record exists.');
+      }
     }
-  }
+  });
 }
 
 
