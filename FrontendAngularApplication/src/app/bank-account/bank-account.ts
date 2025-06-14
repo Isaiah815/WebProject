@@ -5,7 +5,6 @@ import { CommonModule } from '@angular/common';
 import { BankAccountService } from '../shared/bank-account.service';
 import { BankService } from '../shared/bank.service';
 import { BankAccount } from '../shared/bank-account.service';
-
 import { Bank } from '../shared/bank.models';   
 
 @Component({
@@ -80,7 +79,8 @@ ngOnInit(): void {
            a.bankId === b.bankId &&
            a.ifsc === b.ifsc;
   }
-onSubmit(i: number): void {
+
+  onSubmit(i: number): void {
   const row = this.bankAccountForms.at(i);
 
   if (!row) {
@@ -97,34 +97,29 @@ onSubmit(i: number): void {
 
   this.bankAccountService.getByAccountDetails(account).subscribe({
     next: (existingAccount) => {
-      
+      // Case: New record but accountNumber already exists
       if (existingAccount && account.bankAccountID === 0) {
-        alert('AcccountNumber already exists.');
+        alert('Account number already exists for this bank.');
         return;
       }
 
-     
+      // Case: Update existing record
       if (account.bankAccountID !== 0) {
-        if (existingAccount && this.areAccountsEqual(existingAccount, account)) {
-          alert(' Record already exists.');
-          return;
-        }
-
         this.bankAccountService.update(account.bankAccountID!, account).subscribe({
-          next: () => {
-            alert('Record updated.');
-          },
+          next: () => alert('Record updated.'),
           error: (err) => {
             console.error('Update error', err);
-            alert('Failed to update record: ' + (err.error?.message || 'Unknown error'));
+            const msg = err.error?.message || 'Unknown error';
+            alert( msg);
           }
         });
         return;
       }
     },
+
+    // If no existing account is found, proceed to save new record
     error: (err) => {
       if (err.status === 404) {
-
         this.bankAccountService.create(account).subscribe({
           next: (res) => {
             this.bankAccountForms.at(i)?.patchValue({ bankAccountID: res.bankAccountID });
@@ -132,7 +127,12 @@ onSubmit(i: number): void {
           },
           error: (err) => {
             console.error('Save error', err);
-            alert('Failed to save record: ' + (err.error?.message || 'Unknown error'));
+            const message = err.error?.message || '';
+            if (message.includes('duplicate') || message.includes('UNIQUE')) {
+              alert('Account number already exists for this bank.');
+            } else {
+              alert(message);
+            }
           }
         });
       } else {
@@ -143,7 +143,6 @@ onSubmit(i: number): void {
   });
 }
 
-
 onDelete(i: number, account: BankAccount): void {
   const isNew = !account.bankAccountID || account.bankAccountID === 0;
 
@@ -153,7 +152,6 @@ onDelete(i: number, account: BankAccount): void {
         next: () => {
           alert("Deleted successfully");
 
-          // Clear the values instead of removing the row
           this.bankAccountForms.at(i).patchValue({
             bankAccountID: 0,
             accountNumber: '',

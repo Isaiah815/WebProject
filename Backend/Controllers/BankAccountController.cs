@@ -25,7 +25,7 @@ namespace WebAPI.Controllers
                                  .ToListAsync();
         }
 
-        // GET: api/BankAccount/5
+        // GET: api/BankAccount
         [HttpGet("check")]
         public ActionResult<BankAccount> CheckIfExists(string accountNumber, int bankId)
         {
@@ -44,12 +44,12 @@ namespace WebAPI.Controllers
         {
             try
             {
-                var exists = await _context.BankAccounts
-                    .AnyAsync(a => a.AccountNumber == account.AccountNumber && a.BankId == account.BankId);
+                bool exists = await _context.BankAccounts
+                    .AnyAsync(a => a.AccountNumber == account.AccountNumber);
 
                 if (exists)
                 {
-                    return Conflict(new { message = "Account number already exists for this bank." });
+                    return Conflict(new { message = "Account number already exists." });
                 }
 
                 _context.BankAccounts.Add(account);
@@ -57,24 +57,35 @@ namespace WebAPI.Controllers
 
                 return Ok(account);
             }
-            catch (Exception ex)
+            catch (DbUpdateException ex)
             {
                 return StatusCode(500, new { message = ex.Message, details = ex.InnerException?.Message });
             }
         }
 
 
+
         // PUT: api/BankAccount/5
         [HttpPut("{id}")]
         public async Task<IActionResult> PutBankAccount(int id, BankAccount account)
         {
-            if (id != account.BankAccountID) return BadRequest();
+            if (id != account.BankAccountID)
+                return BadRequest();
+
+            // Check if another account already uses this account number
+            bool exists = await _context.BankAccounts
+                .AnyAsync(a => a.BankAccountID != id && a.AccountNumber == account.AccountNumber);
+
+            if (exists)
+                return Conflict(new { message = "Account number already exists." });
 
             _context.Entry(account).State = EntityState.Modified;
             await _context.SaveChangesAsync();
 
             return NoContent();
         }
+
+
 
         // DELETE: api/BankAccount/5
         [HttpDelete("{id}")]

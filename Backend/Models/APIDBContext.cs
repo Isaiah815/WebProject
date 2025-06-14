@@ -15,7 +15,7 @@ namespace WebAPI.Models
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<BankAccount>()
-                .HasIndex(b => new { b.AccountNumber, b.BankId })
+                .HasIndex(b => new { b.AccountNumber})
                 .IsUnique();
 
             base.OnModelCreating(modelBuilder);
