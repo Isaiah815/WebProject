@@ -26,7 +26,33 @@ export class BankAccountComponent implements OnInit {
     private bankService: BankService,              
     private bankAccountService: BankAccountService 
   ) {}
+
+  originalAccounts : BankAccount[] = [];
 ngOnInit(): void {
+  this.form = this.fb.group({
+    bankAccountForms: this.fb.array([])
+  });
+
+  this.bankService.getAll().subscribe({
+    next: (banks) => {
+      this.banks = banks;
+
+      this.bankAccountService.getAll().subscribe({
+        next: (accounts) => {
+          accounts.forEach(account => {
+          this.addBankAccountForm(account);
+          this.originalAccounts.push(JSON.parse(JSON.stringify(account)));
+          });
+        },
+        error: err => console.error('Failed to load accounts', err)
+      });
+    },
+    error: err => console.error('Failed to load banks', err)
+  });
+}
+
+  
+loadAll(): void {
   this.form = this.fb.group({
     bankAccountForms: this.fb.array([])
   });
@@ -46,27 +72,17 @@ ngOnInit(): void {
   });
 }
 
-  
-
-  loadBanks(): void {
-    this.bankService.getAll().subscribe({
-      next: (data) => {
-        this.banks = data;
-        console.log('Loaded banks:', this.banks);
-        this.addBankAccountForm();
-      },
-      error: (err) => {
-        console.error('Failed to load banks', err);
-        this.addBankAccountForm();
-      }
-    });
-  }
 
   addBankAccountForm(data?: BankAccount): void {
   this.bankAccountForms.push(this.fb.group({
     bankAccountID: [data?.bankAccountID || 0],
-    accountNumber: [data?.accountNumber || '', Validators.required],
-    accountHolder: [data?.accountHolder || '', Validators.required],
+accountNumber: [
+      data?.accountNumber || '',
+      [
+        Validators.required,
+        Validators.pattern(/^\d+$/) // Only allow digits
+      ]
+    ],    accountHolder: [data?.accountHolder || '', Validators.required],
     bankId: [data?.bankId || 0, Validators.required],
     ifsc: [data?.ifsc || '', Validators.required]
   }));
@@ -79,8 +95,7 @@ ngOnInit(): void {
            a.bankId === b.bankId &&
            a.ifsc === b.ifsc;
   }
-
-  onSubmit(i: number): void {
+onSubmit(i: number): void {
   const row = this.bankAccountForms.at(i);
 
   if (!row) {
@@ -95,53 +110,65 @@ ngOnInit(): void {
 
   const account: BankAccount = row.value;
 
-  this.bankAccountService.getByAccountDetails(account).subscribe({
-    next: (existingAccount) => {
-      // Case: New record but accountNumber already exists
-      if (existingAccount && account.bankAccountID === 0) {
-        alert('Account number already exists for this bank.');
-        return;
-      }
-
-      // Case: Update existing record
-      if (account.bankAccountID !== 0) {
-        this.bankAccountService.update(account.bankAccountID!, account).subscribe({
-          next: () => alert('Record updated.'),
-          error: (err) => {
-            console.error('Update error', err);
-            const msg = err.error?.message || 'Unknown error';
-            alert( msg);
-          }
-        });
-        return;
-      }
-    },
-
-    // If no existing account is found, proceed to save new record
-    error: (err) => {
-      if (err.status === 404) {
-        this.bankAccountService.create(account).subscribe({
-          next: (res) => {
-            this.bankAccountForms.at(i)?.patchValue({ bankAccountID: res.bankAccountID });
-            alert('Record saved.');
-          },
-          error: (err) => {
-            console.error('Save error', err);
-            const message = err.error?.message || '';
-            if (message.includes('duplicate') || message.includes('UNIQUE')) {
-              alert('Account number already exists for this bank.');
-            } else {
-              alert(message);
+  if (account.bankAccountID === 0) {
+    // Check if account number already exists before saving new
+    this.bankAccountService.getByAccountDetails(account).subscribe({
+      next: (existingAccount) => {
+        if (existingAccount) {
+          alert('Account number already exists.');
+        }
+      },
+      error: (err) => {
+        if (err.status === 404) {
+          // Proceed to save since it doesn't exist
+          this.bankAccountService.create(account).subscribe({
+            next: (res) => {
+              this.bankAccountForms.at(i)?.patchValue({ bankAccountID: res.bankAccountID });
+              this.originalAccounts[i] = JSON.parse(JSON.stringify(res)); // store new original
+              alert('Record saved.');
+              this.loadAll();
+            },
+            error: (err) => {
+              console.error('Save error', err);
+              const msg = err.error?.message || '';
+              if (msg.includes('duplicate') || msg.includes('UNIQUE')) {
+                alert('Account number already exists.');
+              } else {
+                alert(msg);
+              }
             }
-          }
-        });
-      } else {
-        console.error('Existence check failed', err);
-        alert('Failed to check if record exists.');
+          });
+        } else {
+          alert('Failed to check if record exists.');
+        }
       }
+    });
+
+    return;
+  }
+
+  // Account exists, now check for changes
+  const original = this.originalAccounts[i];
+  if (this.areAccountsEqual(account, original)) {
+    alert('No changes made.');
+    return;
+  }
+
+  // Proceed with update
+  this.bankAccountService.update(account.bankAccountID!, account).subscribe({
+    next: () => {
+      this.originalAccounts[i] = JSON.parse(JSON.stringify(account)); // update original
+      alert('Record updated.');
+      this.loadAll();
+    },
+    error: (err) => {
+      console.error('Update error', err);
+      const msg = err.error?.message || 'Unknown error';
+      alert(msg);
     }
   });
 }
+
 
 onDelete(i: number, account: BankAccount): void {
   const isNew = !account.bankAccountID || account.bankAccountID === 0;
@@ -151,6 +178,7 @@ onDelete(i: number, account: BankAccount): void {
       this.bankAccountService.delete(account.bankAccountID!).subscribe({
         next: () => {
           alert("Deleted successfully");
+          this.loadAll();
 
           this.bankAccountForms.at(i).patchValue({
             bankAccountID: 0,

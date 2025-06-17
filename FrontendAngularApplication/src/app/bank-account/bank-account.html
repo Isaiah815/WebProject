@@ -20,7 +20,20 @@
     <tbody formArrayName="bankAccountForms">
       <tr *ngFor="let grp of bankAccountForms.controls; let i = index" [formGroupName]="i">
 
-        <td><input formControlName="accountNumber"></td>
+        <td>
+  <input formControlName="accountNumber" placeholder="Account No" />
+
+  <div *ngIf="bankAccountForms.at(i).get('accountNumber')?.invalid 
+              && bankAccountForms.at(i).get('accountNumber')?.touched">
+    <small class="text-danger" *ngIf="bankAccountForms.at(i).get('accountNumber')?.errors?.['required']">
+      Account number is required.
+    </small>
+    <small class="text-danger" *ngIf="bankAccountForms.at(i).get('accountNumber')?.errors?.['pattern']">
+      Invalid account number.
+    </small>
+  </div>
+</td>
+
 
         <td><input formControlName="accountHolder"></td>
 
